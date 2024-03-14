@@ -3,133 +3,209 @@ import datetime
 import shutil
 import plistlib
 import xattr
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
 
 
-def get_file_info(file_path, school):
-    """
-    Retrieve key information about a file including its size, creation time, name, type and the source of download if available.
+class FileOrganizerGUI:
+    def __init__(self, master):
+        self.master = master
+        master.title("File Organizer")
 
-    Args:
-        file_path: The path to the file.
-        school: the name of the school to check in the file's download source (can be None).
+        self.label_directory = tk.Label(master, text="Select Directory:")
+        self.label_directory.pack()
 
-    Returns:
-        A dictionary containing file information.
-    """
-    file_size = os.path.getsize(file_path)
-    file_create_time = datetime.datetime.fromtimestamp(os.path.getctime(file_path))
-    file_name, file_type = os.path.splitext(file_path)
-    file_download_from = ""
-    try:
-        # Extract extended attributes to find out the file's download source if available
-        attr_data = plistlib.loads(
-            xattr.getxattr(file_path, "com.applemetadata:kMDItemWhereFroms")
+        self.entry_directory = tk.Entry(master, width=50)
+        self.entry_directory.pack()
+
+        self.button_browse = tk.Button(master, text="Browse", command=self.browse_directory)
+        self.button_browse.pack()
+
+        self.label_school_name = tk.Label(master, text="School Name:")
+        self.label_school_name.pack()
+
+        self.entry_school_name = tk.Entry(master)
+        self.entry_school_name.pack()
+
+        self.label_file_types = tk.Label(master, text="Select File Types to Organize:")
+        self.label_file_types.pack()
+
+        self.file_types = [
+            "IMAGE",
+            "DOCUMENT",
+            "AUDIO",
+            "VIDEO",
+            "ARCHIVE",
+            "EXECUTABLE",
+            "CODE",
+            "SPREADSHEET",
+        ]
+        self.file_types_vars = {}
+        for ftype in self.file_types:
+            self.file_types_vars[ftype] = tk.BooleanVar()
+            ttk.Checkbutton(master, text=ftype, variable=self.file_types_vars[ftype]).pack()
+
+        self.button_organize = tk.Button(
+            master, text="Organize Files", command=self.organize_files
         )
-        file_download_from = attr_data[0]
-        if school in file_download_from:
-            file_download_from = "School"
-    except OSError as error:
-        print(error)
+        self.button_organize.pack()
 
-    return {
-        "File Size": file_size,
-        "File Created Time": file_create_time,
-        "File Name": os.path.basename(file_name),
-        "File Type": file_type,
-        "File Downloaded From": file_download_from,
-    }
+    def browse_directory(self):
+        directory = filedialog.askdirectory()
+        self.entry_directory.delete(0, tk.END)
+        self.entry_directory.insert(0, directory)
+
+    def organize_files(self):
+        directory = self.entry_directory.get()
+        school_name = self.entry_school_name.get()
+        file_formats = {
+            "IMAGE": [
+                ".jpg",
+                ".jpeg",
+                ".png",
+                ".gif",
+                ".bmp",
+                ".tiff",
+                ".svg",
+                ".mov",
+                ".heic",
+                ".webm",
+                ".avif",
+            ],
+            "DOCUMENT": [
+                ".doc",
+                ".docx",
+                ".pdf",
+                ".ppt",
+                ".pptx",
+                ".xls",
+                ".xlsx",
+                ".txt",
+                ".rtf",
+            ],
+            "AUDIO": [".mp3", ".wav", ".aac", ".flac", ".ogg", ".m4a"],
+            "VIDEO": [".mp4", ".avi", ".mkv", ".mov", ".wmv"],
+            "ARCHIVE": [".zip", ".rar", ".7z", ".tar.gz", ".tar"],
+            "EXECUTABLE": [".exe", ".dmg", ".apk", ".deb", ".rpm"],
+            "CODE": [
+                ".html",
+                ".css",
+                ".js",
+                ".py",
+                ".java",
+                ".cpp",
+                ".json",
+                ".xml",
+                ".md",
+                ".yml",
+                ".yaml",
+                ".go",
+                ".rb",
+                ".php",
+                ".swift",
+                ".c",
+                ".h",
+                ".pl",
+                ".lua",
+                ".scala",
+                ".ts",
+            ],
+            "SPREADSHEET": [".csv", ".db", ".sqlite", ".sql"],
+        }
+        selected_file_types = [
+            ftype for ftype, var in self.file_types_vars.items() if var.get()
+        ]
+
+        pass_file_type = {
+            ftype: formats
+            for ftype, formats in file_formats.items()
+            if ftype in selected_file_types
+        }
+
+        if directory and selected_file_types:
+            self.list_files_in_folder(directory, school_name, pass_file_type)
+        else:
+            messagebox.showwarning(
+                "Warning", "Please select a directory and at least one file type."
+            )
+
+    def get_file_info(self, file_path, school):
+        file_size = os.path.getsize(file_path)
+        file_create_time = datetime.datetime.fromtimestamp(os.path.getctime(file_path))
+        file_name, file_type = os.path.splitext(file_path)
+        file_download_from = ""
+        try:
+            attr_data = plistlib.loads(
+                xattr.getxattr(file_path, "com.applemetadata:kMDItemWhereFroms")
+            )
+            file_download_from = attr_data[0]
+            if school in file_download_from:
+                file_download_from = "School"
+        except OSError as error:
+            print(error)
+
+        return {
+            "File Size": file_size,
+            "File Created Time": file_create_time,
+            "File Name": os.path.basename(file_name),
+            "File Type": file_type,
+            "File Downloaded From": file_download_from,
+        }
+
+    def create_directory(self, path):
+        try:
+            if not os.path.exists(path):
+                os.makedirs(path)
+        except OSError as error:
+            print(f"Cannot create folder at {path}: {error}")
+            return False
+        return True
+
+    def move_file(self, source, destination):
+        try:
+            shutil.move(source, destination)
+            print(f"File moved from {source} to {destination}")
+        except OSError as error:
+            print(error)
+
+    def category_file(self, directory_path, source_path, file_type, file_from, pass_file_type):
+        destination_path = ""
+
+        if file_from == "School":
+            destination_path = os.path.join(directory_path, "School")
+        else:
+            for category, ftype in pass_file_type.items():
+                if file_type.lower() in ftype:
+                    destination_path = os.path.join(directory_path, category)
+            if destination_path == "":
+                destination_path = os.path.join(directory_path, "Other")
+
+        if self.create_directory(destination_path):
+            self.move_file(source_path, destination_path)
+
+    def list_files_in_folder(self, directory_path, school_name, pass_file_type):
+        if os.path.exists(directory_path):
+            for file_name in os.listdir(directory_path):
+                full_path = os.path.join(directory_path, file_name)
+                if os.path.isfile(full_path):
+                    info = self.get_file_info(full_path, school_name)
+                    self.category_file(
+                        directory_path,
+                        full_path,
+                        info["File Type"],
+                        info["File Downloaded From"],
+                        pass_file_type,
+                    )
+        else:
+            messagebox.showerror("Error", "Directory path doesn't exist")
+        messagebox.showinfo("Success", "File organization has finished.")
 
 
-def create_directory(path):
-    """
-    Create a new directory if it doesn't exist.
-
-    Args:
-        path : The path where the directory is to created.
-
-    Returns:
-        True if derectory is created or exists, False if an error occurred.
-    """
-    try:
-        if not os.path.exists(path):
-            os.makedirs(path)
-    except OSError as error:
-        print(f"Cannot create folder at {path}: {error}")
-        return False
-    return True
-
-
-def move_file(source, destination):
-    """
-    Move a file from the source path to the destination path.
-
-    Args:
-        source : Path of the source file.
-        destination : Path where the file needs to be moved.
-    """
-    try:
-        shutil.move(source, destination)
-        print(f"File moved from {source} to {destination}")
-    except OSError as error:
-        print(error)
-
-
-def category_file(directory_path, source_path, file_type, file_from):
-    """
-    Categorize and move a file based on its type and download source.
-
-    Args:
-        directory_path : The base directory path where files are being stored.
-        source_path : The source path of the file.
-        file_type : The type of the file.
-        file_from : The source from where the file was downloaded if available.
-    """
-    destination_path = ""
-    file_formats = {
-        "Image": [".JPEG", ".PNG", ".GIF", ".BMP", ".SVG"],
-        "Audio": [".MP3", ".WAV", ".AAC", ".FLAC"],
-        "Video": [".MP4", ".AVI", ".MOV", ".WMV"],
-        "Document": [".PDF", ".DOC", ".PPT", ".DOCX", ".PPTX"],
-        "Other": [".ZIP", ".HTML", ".XML", ".RAR"],
-    }
-
-    # Determine the destination path based on the file type and source
-    if file_from == "School":
-        destination_path = os.path.join(directory_path, "School")
-    else:
-        for category, ftype in file_formats.items():
-            if file_type.upper() in ftype:
-                destination_path = os.path.join(directory_path, category)
-        if destination_path == "":
-            destination_path = os.path.join(directory_path, "Other")
-
-    # Create the destination directory and move the file
-    if create_directory(destination_path):
-        move_file(source_path, destination_path)
-
-
-def list_files_in_folder(directory_path, school_name):
-    """
-    List and categorize all files in a given folder.
-
-    Args:
-        directory_path : The path of the directory to organize.
-        school_name : The name of the school to check if file was downloaded from a education domain.
-    """
-    if os.path.exists(directory_path):
-        for file_name in os.listdir(directory_path):
-            full_path = os.path.join(directory_path, file_name)
-            if os.path.isfile(full_path):
-                info = get_file_info(full_path, school_name)
-                category_file(
-                    directory_path, full_path, info["File Type"], info["File Downloaded From"]
-                )
-    else:
-        print("Directory path doesn't exist")
-    print("File move has finished")
+def main():
+    root = tk.Tk()
+    app = FileOrganizerGUI(root)
+    root.mainloop()
 
 
 if __name__ == "__main__":
-    school_name = input("Please enter you school name: ")
-    directory_path = input("Please enter the path of the folder you want to organize: ")
-    list_files_in_folder(directory_path, school_name)
+    main()
