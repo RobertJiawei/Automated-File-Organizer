@@ -9,8 +9,8 @@ from tkinter import filedialog, messagebox, ttk
 
 class FileOrganizerGUI:
     def __init__(self, master):
-        self.master = master
         master.title("File Organizer")
+        master.geometry("600x600")
 
         self.label_directory = tk.Label(master, text="Select Directory:")
         self.label_directory.pack()
@@ -49,6 +49,15 @@ class FileOrganizerGUI:
             master, text="Organize Files", command=self.organize_files
         )
         self.button_organize.pack()
+
+        self.output_label = tk.Label(master, text="Output:")
+        self.output_label.pack(pady=(10, 0))  # Add some padding above the label
+
+        self.output_text = tk.Text(master, height=15, width=70)
+        self.output_text.pack()
+
+        self.scrollbar = tk.Scrollbar(master, command=self.output_text.yview)
+        self.output_text.config(yscrollcommand=self.scrollbar.set)
 
     def browse_directory(self):
         directory = filedialog.askdirectory()
@@ -129,6 +138,10 @@ class FileOrganizerGUI:
                 "Warning", "Please select a directory and at least one file type."
             )
 
+    def update_output(self, message):
+        self.output_text.insert(tk.END, message + "\n\n")
+        self.output_text.see(tk.END)
+
     def get_file_info(self, file_path, school):
         file_size = os.path.getsize(file_path)
         file_create_time = datetime.datetime.fromtimestamp(os.path.getctime(file_path))
@@ -142,7 +155,7 @@ class FileOrganizerGUI:
             if school in file_download_from:
                 file_download_from = "School"
         except OSError as error:
-            print(error)
+            self.update_output(str(error))
 
         return {
             "File Size": file_size,
@@ -157,16 +170,16 @@ class FileOrganizerGUI:
             if not os.path.exists(path):
                 os.makedirs(path)
         except OSError as error:
-            print(f"Cannot create folder at {path}: {error}")
+            self.update_output(f"Cannot create folder at {path}: {str(error)}")
             return False
         return True
 
     def move_file(self, source, destination):
         try:
             shutil.move(source, destination)
-            print(f"File moved from {source} to {destination}")
+            self.update_output(f"File moved from {source} to {destination}")
         except OSError as error:
-            print(error)
+            self.update_output(str(error))
 
     def category_file(self, directory_path, source_path, file_type, file_from, pass_file_type):
         destination_path = ""
@@ -198,7 +211,9 @@ class FileOrganizerGUI:
                     )
         else:
             messagebox.showerror("Error", "Directory path doesn't exist")
+            self.update_output("Directory path doesn't exist")
         messagebox.showinfo("Success", "File organization has finished.")
+        self.update_output("File organization has finished.")
 
 
 def main():
