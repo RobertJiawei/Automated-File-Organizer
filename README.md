@@ -43,7 +43,8 @@ from tkinter import filedialog, messagebox, ttk
 
 ## Demo
 
-![](./demo.mp4)
+https://github.com/RobertJiawei/File-Organizer/assets/29966757/5ece85b0-250f-4534-b119-4e9158d0ec5e
+
 ---
 
 *I've set up a few pre-defined folders to store different file types.*
