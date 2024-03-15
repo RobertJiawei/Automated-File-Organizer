@@ -43,7 +43,7 @@ from tkinter import filedialog, messagebox, ttk
 
 ## Demo
 
-
+![](./demo.mp4)
 ---
 
 *I've set up a few pre-defined folders to store different file types.*
